@@ -393,3 +393,91 @@ button{user-select:none}
   .toggle-group::-webkit-scrollbar{width:7px;height:7px}
   .toggle-group::-webkit-scrollbar-thumb{background:var(--green);border-radius:999px}
 }
+
+
+/* =========================================================
+   NUEVOS INDICADORES GRAFICABLES
+   ========================================================= */
+.chart-theater .chart-stage:nth-last-child(-n+2){
+  min-height:clamp(300px,26vw,410px);
+}
+@media (min-width:1600px){
+  .chart-theater .chart-stage:nth-last-child(-n+2){min-height:390px;}
+}
+@media (max-width:980px){
+  .chart-theater .chart-stage:nth-last-child(-n+2){min-height:320px;}
+}
+.kpi-card:nth-child(n+9){
+  background:linear-gradient(145deg, rgba(255,255,255,.94), rgba(242,248,248,.86));
+  border-color:rgba(204,212,0,.34);
+}
+
+/* =========================================================
+   AJUSTE FINAL: DOS TORTAS KPI EN LA COLUMNA DERECHA
+   Ocupa el espacio visual libre del bloque de gráficos y mantiene
+   proporción estándar en PC, laptop, tablet y celular.
+   ========================================================= */
+@media (min-width:1201px){
+  .chart-theater{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(250px,.78fr) !important;
+    align-items:start !important;
+    grid-auto-flow:row !important;
+  }
+  .stage-wide{
+    grid-column:span 2 !important;
+  }
+  .side-pie-engagement{
+    grid-column:3 !important;
+    grid-row:2 !important;
+  }
+  .side-pie-ctr{
+    grid-column:3 !important;
+    grid-row:3 !important;
+  }
+  .side-pie{
+    min-height:auto !important;
+    align-self:stretch;
+  }
+  .side-pie canvas{
+    --chart-h:clamp(220px,22vh,290px) !important;
+  }
+  #funnelChart,
+  #efficiencyChart{
+    --chart-h:clamp(250px,27vh,345px) !important;
+  }
+}
+@media (min-width:1600px){
+  .chart-theater{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(285px,.74fr) !important;
+  }
+  .side-pie canvas{
+    --chart-h:clamp(235px,21vh,315px) !important;
+  }
+}
+#engagementPieChart,
+#ctrPieChart{
+  --chart-h:clamp(220px,26vh,310px);
+}
+.side-pie{
+  background:
+    radial-gradient(circle at 78% 12%, rgba(204,212,0,.17), transparent 42%),
+    linear-gradient(135deg,rgba(255,255,255,.94),rgba(241,249,249,.86)) !important;
+  border-color:rgba(204,212,0,.28) !important;
+}
+.side-pie .card-heading h3{
+  font-size:clamp(.9rem,.48vw + .78rem,1.08rem) !important;
+}
+@media (max-width:1200px){
+  .side-pie canvas,
+  #engagementPieChart,
+  #ctrPieChart{
+    --chart-h:clamp(235px,34vh,330px) !important;
+  }
+}
+@media (max-width:640px){
+  .side-pie canvas,
+  #engagementPieChart,
+  #ctrPieChart{
+    --chart-h:clamp(220px,46vh,300px) !important;
+  }
+}

@@ -40,3 +40,13 @@ Se incorporó scroll interno institucional en el menú verde para evitar cortes 
 - Filtros de medición para elegir los indicadores que alimentan la gráfica de tendencia.
 - Selector de modo gráfico: barras + líneas, solo líneas o solo barras.
 - Los gráficos se recalculan automáticamente según la selección del usuario.
+
+
+## Mejora adicionada
+
+Esta versión incorpora más indicadores KPI graficables y dos nuevos gráficos ejecutivos:
+
+- **Embudo digital:** compara Engagement %, Visita % y CTR % por plataforma y período.
+- **Eficiencia editorial:** mide visualizaciones e interacciones promedio por publicación.
+
+Los nuevos gráficos respetan los filtros interactivos de plataforma y se recalculan automáticamente cuando se cargan datos desde PDF, Excel o CSV.

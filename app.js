@@ -352,6 +352,30 @@ function renderCharts(){
       options: axisOptions({ dual:true })
     });
   }
+
+  const totalViews = sum(items,'views');
+  const totalInteractions = sum(items,'interactions');
+  const totalClicks = sum(items,'clicks');
+  const engagement = totalViews ? totalInteractions / totalViews * 100 : 0;
+  const ctr = totalViews ? totalClicks / totalViews * 100 : 0;
+  const engagementCanvas = $('engagementPieChart');
+  if(engagementCanvas){
+    const pctTarget = clamp((engagement / 4) * 100, 0, 100);
+    charts.engagementPie = new Chart(engagementCanvas, {
+      type:'doughnut',
+      data:{ labels:['Cumplimiento de meta','Brecha por cerrar'], datasets:[{ data:[pctTarget, Math.max(0, 100-pctTarget)], borderWidth:0, cutout:'68%', backgroundColor:[COLORS.green, 'rgba(0,108,114,.10)'] }]},
+      options: kpiPieOptions(`Engagement ${percent(engagement)}`, `Meta 4%`)
+    });
+  }
+  const ctrCanvas = $('ctrPieChart');
+  if(ctrCanvas){
+    const pctTarget = clamp((ctr / .20) * 100, 0, 100);
+    charts.ctrPie = new Chart(ctrCanvas, {
+      type:'doughnut',
+      data:{ labels:['Cumplimiento de meta','Brecha por cerrar'], datasets:[{ data:[pctTarget, Math.max(0, 100-pctTarget)], borderWidth:0, cutout:'68%', backgroundColor:[COLORS.blue, 'rgba(0,108,114,.10)'] }]},
+      options: kpiPieOptions(`CTR ${percent(ctr)}`, `Meta 0,20%`)
+    });
+  }
 }
 
 function axisOptions({ horizontal=false, dual=false } = {}){
@@ -382,6 +406,18 @@ function percentAxisOptions({ horizontal=false } = {}){
       x:{ beginAtZero:true, grid:{ display:false }, ticks:{ color:COLORS.muted, maxTicksLimit:6, callback:(v)=>percent(v) }},
       y:{ beginAtZero:true, grid:{ color:'rgba(0,108,114,.10)' }, ticks:{ color:COLORS.muted, autoSkip:false, callback:(v)=> typeof v === 'number' ? percent(v) : v }}
     }
+  };
+}
+
+function kpiPieOptions(title, subtitle){
+  return {
+    layout:{ padding:{ top:4, right:4, bottom:0, left:4 }},
+    plugins:{
+      legend:{ position:'bottom', labels:{ usePointStyle:true, padding:14, font:{ weight:'bold' }}},
+      title:{ display:true, text:[title, subtitle], color:COLORS.blueDark, font:{ weight:'bold', size:14 }, padding:{ top:2, bottom:8 }},
+      tooltip:{ callbacks:{ label:(ctx)=>`${ctx.label}: ${percent(ctx.raw)}` }}
+    },
+    animation:{ duration:900 }
   };
 }
 
