@@ -1037,50 +1037,189 @@ function buildPdfReportNode(){
   document.body.appendChild(shell);
   return shell;
 }
+function addPdfPageIfNeeded(pdf, cursor, neededHeight, margin, pageH){
+  if(cursor.y + neededHeight > pageH - margin){
+    pdf.addPage();
+    cursor.y = margin;
+    return true;
+  }
+  return false;
+}
+function pdfPlainText(value){
+  return String(value ?? '')
+    .replace(/—/g, '-')
+    .replace(/•/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .trim();
+}
+function chartPdfImage(id){
+  const canvas = $(id);
+  if(!canvas) return '';
+  try{
+    const chart = Object.values(charts || {}).find(c => c?.canvas === canvas);
+    if(chart && typeof chart.toBase64Image === 'function') return chart.toBase64Image('image/png', 1);
+    return canvas.toDataURL('image/png', 1);
+  }catch(err){
+    console.warn('No se pudo capturar el gráfico para PDF:', id, err);
+    return '';
+  }
+}
+function drawRoundedRect(pdf, x, y, w, h, r, fill, stroke){
+  pdf.setFillColor(...fill);
+  if(stroke){ pdf.setDrawColor(...stroke); pdf.roundedRect(x,y,w,h,r,r,'FD'); }
+  else { pdf.roundedRect(x,y,w,h,r,r,'F'); }
+}
+function drawPdfHeader(pdf, cursor, pageW, margin){
+  const logo = $('brandLogo')?.src || '';
+  try{ if(logo) pdf.addImage(logo, 'PNG', pageW/2 - 25, cursor.y, 50, 14); }catch(e){ console.warn('Logo PDF omitido', e); }
+  cursor.y += 23;
+  pdf.setFont('helvetica','bold');
+  pdf.setFontSize(8);
+  pdf.setTextColor(0,108,114);
+  pdf.text('INFIHUILA - COMUNICACIONES', pageW/2, cursor.y, {align:'center'});
+  cursor.y += 8;
+  pdf.setFontSize(22);
+  pdf.setTextColor(16,29,48);
+  pdf.text('Informe gerencial del plan de medios', pageW/2, cursor.y, {align:'center'});
+  cursor.y += 8;
+}
+function drawPdfFooter(pdf, pageW, pageH, margin){
+  const total = pdf.internal.getNumberOfPages();
+  for(let i=1;i<=total;i++){
+    pdf.setPage(i);
+    pdf.setDrawColor(204,212,0);
+    pdf.setLineWidth(.8);
+    pdf.line(margin, pageH - 11, pageW - margin, pageH - 11);
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(7);
+    pdf.setTextColor(93,108,132);
+    pdf.text('Instituto Financiero para el Desarrollo del Huila - INFIHUILA', margin, pageH - 6);
+    pdf.text(`Pagina ${i} de ${total}`, pageW - margin, pageH - 6, {align:'right'});
+  }
+}
 async function exportPdfReport(){
   const btn = $('btnPdf');
-  if(!window.html2canvas || !window.jspdf){
-    alert('No se pudieron cargar las librerías de PDF. Verifica la conexión a internet e intenta nuevamente.');
+  if(!window.jspdf){
+    alert('No se pudo cargar la librería de PDF. Verifica la conexión a internet e intenta nuevamente.');
     return;
   }
   const oldText = btn ? btn.textContent : '';
   try{
     if(btn){ btn.classList.add('is-loading'); btn.textContent = 'Generando PDF...'; }
     renderCharts();
-    await new Promise(r => setTimeout(r, 450));
-    const node = buildPdfReportNode();
-    const canvas = await html2canvas(node, {
-      scale: 2,
-      backgroundColor: '#f7fbfb',
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      windowWidth: 794
-    });
-    node.remove();
-    const imgData = canvas.toDataURL('image/png', 1.0);
+    await new Promise(r => setTimeout(r, 700));
+
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdf = new jsPDF({orientation:'p', unit:'mm', format:'a4', compress:true});
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const imgW = pageW - margin*2;
-    const imgH = canvas.height * imgW / canvas.width;
-    let y = margin;
-    let heightLeft = imgH;
-    pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST');
-    heightLeft -= (pageH - margin*2);
-    while(heightLeft > 0){
-      pdf.addPage();
-      y = margin - (imgH - heightLeft);
-      pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST');
-      heightLeft -= (pageH - margin*2);
+    const margin = 14;
+    const cursor = { y: margin };
+    const teal = [0,108,114], green = [204,212,0], ink = [16,29,48], muted = [93,108,132], soft = [247,251,251], line = [207,226,228];
+
+    drawPdfHeader(pdf, cursor, pageW, margin);
+
+    const periodo = pdfPlainText($('periodoLabel')?.textContent || state.heroTitle || initialState.heroTitle);
+    const resumen = pdfPlainText($('executiveSummary')?.textContent || state.summary || initialState.summary);
+    drawRoundedRect(pdf, margin, cursor.y, pageW - margin*2, 42, 4, soft, line);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...teal);
+    pdf.text('PERIODO ANALIZADO', margin+6, cursor.y+8);
+    pdf.setFontSize(16); pdf.setTextColor(...ink);
+    pdf.text(periodo, margin+6, cursor.y+17);
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(35,55,86);
+    const summaryLines = pdf.splitTextToSize(resumen, pageW - margin*2 - 12).slice(0,5);
+    pdf.text(summaryLines, margin+6, cursor.y+27, {lineHeightFactor:1.25});
+    cursor.y += 50;
+
+    const kpis = metricForPdf();
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...teal);
+    pdf.text('INDICADORES KPI', margin, cursor.y);
+    cursor.y += 4;
+    const cols = 4, gap = 4, boxW = (pageW - margin*2 - gap*(cols-1))/cols, boxH = 18;
+    kpis.slice(0,12).forEach((kv,i)=>{
+      const x = margin + (i%cols)*(boxW+gap), y = cursor.y + Math.floor(i/cols)*(boxH+4);
+      drawRoundedRect(pdf, x, y, boxW, boxH, 3, [255,255,255], line);
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(6.5); pdf.setTextColor(...muted);
+      pdf.text(pdfPlainText(kv[0]).toUpperCase(), x+3, y+6, {maxWidth:boxW-6});
+      pdf.setFontSize(13); pdf.setTextColor(...teal);
+      pdf.text(pdfPlainText(kv[1]), x+3, y+14);
+    });
+    cursor.y += 72;
+
+    const chartDefs = [
+      ['Evolución y tracción del plan de medios','trendChart',true],
+      ['Radar de desempeño por plataforma','radarChart',false],
+      ['Conversión: clics sobre visualizaciones','conversionChart',false],
+      ['Formatos ganadores','formatChart',false],
+      ['Benchmark institucional','benchmarkChart',true],
+      ['Audiencia territorial','cityAudienceChart',true],
+      ['Composición demográfica','genderAudienceChart',false],
+      ['Brecha hacia referente objetivo','referenceGapChart',false],
+      ['Tasa de interacción frente a meta','engagementPieChart',false],
+      ['Conversión a clics frente a meta','ctrPieChart',false],
+      ['Embudo digital','funnelChart',false],
+      ['Eficiencia editorial','efficiencyChart',false]
+    ].map(([title,id,wide])=>({title, img:chartPdfImage(id), wide})).filter(x=>x.img);
+
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...teal);
+    pdf.text('GRAFICOS PRINCIPALES', margin, cursor.y);
+    cursor.y += 5;
+    let col = 0;
+    const halfW = (pageW - margin*2 - 6)/2;
+    for(const c of chartDefs){
+      const wide = c.wide;
+      const w = wide ? pageW - margin*2 : halfW;
+      const h = wide ? 64 : 58;
+      if(wide && col === 1){ cursor.y += 66; col = 0; }
+      addPdfPageIfNeeded(pdf, cursor, h + 12, margin, pageH);
+      const x = wide ? margin : margin + col*(halfW+6);
+      const y = cursor.y;
+      drawRoundedRect(pdf, x, y, w, h, 4, [255,255,255], line);
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...ink);
+      pdf.text(pdfPlainText(c.title), x+4, y+7, {maxWidth:w-8});
+      try{ pdf.addImage(c.img, 'PNG', x+4, y+11, w-8, h-16, undefined, 'FAST'); }catch(e){ console.warn('Gráfico omitido en PDF', c.title, e); }
+      if(wide){ cursor.y += h + 7; col = 0; }
+      else if(col === 0){ col = 1; }
+      else { cursor.y += h + 7; col = 0; }
     }
+    if(col === 1){ cursor.y += 65; }
+
+    const alerts = (typeof editableAlerts === 'function' ? editableAlerts() : buildAlerts(getReportItems())).slice(0,6);
+    const recs = (state.recommendations || []).slice(0,8);
+    addPdfPageIfNeeded(pdf, cursor, 70, margin, pageH);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...teal);
+    pdf.text('SEMAFORO GERENCIAL Y RUTA DE MEJORA', margin, cursor.y);
+    cursor.y += 5;
+    const listW = (pageW - margin*2 - 6)/2;
+    const startY = cursor.y;
+    drawRoundedRect(pdf, margin, startY, listW, 66, 4, [255,255,255], line);
+    drawRoundedRect(pdf, margin+listW+6, startY, listW, 66, 4, [255,255,255], line);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...ink);
+    pdf.text('Alertas críticas', margin+4, startY+7);
+    let yy = startY+14;
+    pdf.setFontSize(7.2);
+    alerts.forEach(a=>{
+      pdf.setTextColor(...teal); pdf.text('•', margin+4, yy);
+      pdf.setTextColor(35,55,86);
+      const txt = pdf.splitTextToSize(`${pdfPlainText(a.title)}: ${pdfPlainText(a.body)}`, listW-11).slice(0,2);
+      pdf.text(txt, margin+8, yy, {lineHeightFactor:1.15}); yy += txt.length*4.2 + 1;
+    });
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...ink);
+    pdf.text('Recomendaciones priorizadas', margin+listW+10, startY+7);
+    yy = startY+14;
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(7.2); pdf.setTextColor(35,55,86);
+    recs.forEach((r,i)=>{
+      const txt = pdf.splitTextToSize(`${i+1}. ${pdfPlainText(r)}`, listW-9).slice(0,2);
+      pdf.text(txt, margin+listW+10, yy, {lineHeightFactor:1.15}); yy += txt.length*4.2 + 1;
+    });
+
+    drawPdfFooter(pdf, pageW, pageH, margin);
     const fileDate = new Date().toISOString().slice(0,10);
     pdf.save(`Informe_Plan_Medios_INFIHUILA_${fileDate}.pdf`);
   }catch(err){
-    console.error(err);
-    alert('No fue posible generar el PDF. Revisa que los gráficos hayan cargado correctamente.');
+    console.error('Error generando PDF:', err);
+    alert('No fue posible generar el PDF. Se ajustó el generador para ser compatible con GitHub Pages; recarga la página e intenta nuevamente.');
   }finally{
     if(btn){ btn.classList.remove('is-loading'); btn.textContent = oldText || 'Generar PDF'; }
   }
