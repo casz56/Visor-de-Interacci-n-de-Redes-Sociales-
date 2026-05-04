@@ -28,3 +28,15 @@ Esta versión corrige las dimensiones de todos los gráficos con alturas estánd
 - Se eliminó el recuadro blanco generado por el comportamiento de doble fila del gráfico radar en pantallas grandes.
 - Se retiró el elemento decorativo interno que podía generar bloques visuales innecesarios en las tarjetas de gráficos.
 - Se conservan tamaños estándar y responsive para los gráficos.
+
+## Ajuste final de menú lateral
+
+Se incorporó scroll interno institucional en el menú verde para evitar cortes visuales en pantallas bajas, portátiles con zoom, tablets y resoluciones reducidas. La barra mantiene la paleta INFIHUILA y permite acceder completamente al índice gerencial y a todos los botones del menú.
+
+
+## Actualización final solicitada
+- Logo institucional incrustado como Base64 dentro del HTML/JavaScript para evitar rutas rotas en GitHub Pages.
+- Nuevo centro gráfico interactivo con selección múltiple de plataformas.
+- Filtros de medición para elegir los indicadores que alimentan la gráfica de tendencia.
+- Selector de modo gráfico: barras + líneas, solo líneas o solo barras.
+- Los gráficos se recalculan automáticamente según la selección del usuario.
