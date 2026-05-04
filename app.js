@@ -1227,3 +1227,347 @@ async function exportPdfReport(){
 document.addEventListener('DOMContentLoaded', () => {
   $('btnPdf')?.addEventListener('click', exportPdfReport);
 });
+
+
+
+/* =========================================================
+   GENERADOR PDF ROBUSTO PARA GITHUB PAGES
+   Esta versión NO depende de capturas de canvas ni html2canvas.
+   Dibuja los gráficos directamente con jsPDF para evitar errores
+   cuando el navegador todavía no ha terminado de renderizar Chart.js.
+   ========================================================= */
+function infiPdfSafeNumber(value, fallback = 0){
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+function infiPdfItems(){
+  return (Array.isArray(state?.platforms) ? state.platforms : initialState.platforms).map(x => ({
+    platform: String(x.platform || ''),
+    period: String(x.period || ''),
+    views: infiPdfSafeNumber(x.views),
+    reach: infiPdfSafeNumber(x.reach),
+    interactions: infiPdfSafeNumber(x.interactions),
+    visits: infiPdfSafeNumber(x.visits),
+    newFollowers: infiPdfSafeNumber(x.newFollowers),
+    clicks: infiPdfSafeNumber(x.clicks),
+    responseRate: infiPdfSafeNumber(x.responseRate),
+    followers: infiPdfSafeNumber(x.followers),
+    posts: infiPdfSafeNumber(x.posts),
+    organic: infiPdfSafeNumber(x.organic, 100)
+  }));
+}
+function infiPdfSum(items, key){ return items.reduce((acc, item) => acc + infiPdfSafeNumber(item[key]), 0); }
+function infiPdfPct(n){ return `${(infiPdfSafeNumber(n)).toLocaleString('es-CO', {maximumFractionDigits:2})}%`; }
+function infiPdfNum(n){ return (infiPdfSafeNumber(n)).toLocaleString('es-CO'); }
+function infiPdfText(value){
+  return String(value ?? '')
+    .replace(/\s+/g,' ')
+    .replace(/—/g,'-')
+    .replace(/•/g,'-')
+    .replace(/[^\S\r\n]+/g,' ')
+    .trim();
+}
+function infiPdfPageBreak(pdf, cursor, needed, margin, pageH){
+  if(cursor.y + needed > pageH - margin - 8){
+    pdf.addPage();
+    cursor.y = margin;
+  }
+}
+function infiPdfRounded(pdf, x, y, w, h, r, fill, stroke){
+  pdf.setFillColor(fill[0], fill[1], fill[2]);
+  if(stroke){
+    pdf.setDrawColor(stroke[0], stroke[1], stroke[2]);
+    pdf.roundedRect(x,y,w,h,r,r,'FD');
+  }else{
+    pdf.roundedRect(x,y,w,h,r,r,'F');
+  }
+}
+function infiPdfHeader(pdf, cursor, pageW, margin){
+  const teal = [0,108,114], ink = [16,29,48], green = [204,212,0];
+  const logo = document.getElementById('brandLogo')?.src || '';
+  try{
+    if(logo && logo.startsWith('data:image')){
+      pdf.addImage(logo, 'PNG', pageW/2 - 24, cursor.y, 48, 13, undefined, 'FAST');
+      cursor.y += 20;
+    }else{
+      throw new Error('Logo sin data URI');
+    }
+  }catch(err){
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(18);
+    pdf.setTextColor(teal[0], teal[1], teal[2]);
+    pdf.text('Infi', pageW/2 - 18, cursor.y + 8, {align:'right'});
+    pdf.setTextColor(green[0], green[1], green[2]);
+    pdf.text('Huila', pageW/2 - 17, cursor.y + 8, {align:'left'});
+    cursor.y += 16;
+  }
+  pdf.setFont('helvetica','bold');
+  pdf.setFontSize(7.5);
+  pdf.setCharSpace(1.2);
+  pdf.setTextColor(teal[0], teal[1], teal[2]);
+  pdf.text('INFIHUILA · COMUNICACIONES', pageW/2, cursor.y, {align:'center'});
+  pdf.setCharSpace(0);
+  cursor.y += 8;
+  pdf.setFontSize(19);
+  pdf.setTextColor(ink[0], ink[1], ink[2]);
+  pdf.text('Informe gerencial del plan de medios', pageW/2, cursor.y, {align:'center'});
+  cursor.y += 7;
+}
+function infiPdfFooter(pdf, pageW, pageH, margin){
+  const total = pdf.internal.getNumberOfPages();
+  for(let i=1;i<=total;i++){
+    pdf.setPage(i);
+    pdf.setDrawColor(204,212,0);
+    pdf.setLineWidth(0.8);
+    pdf.line(margin, pageH - 11, pageW - margin, pageH - 11);
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(7);
+    pdf.setTextColor(93,108,132);
+    pdf.text('Instituto Financiero para el Desarrollo del Huila - INFIHUILA', margin, pageH - 6);
+    pdf.text(`Página ${i} de ${total}`, pageW - margin, pageH - 6, {align:'right'});
+  }
+}
+function infiPdfSectionTitle(pdf, title, subtitle, x, y, w){
+  pdf.setFont('helvetica','bold');
+  pdf.setFontSize(7.5);
+  pdf.setCharSpace(1.2);
+  pdf.setTextColor(0,108,114);
+  pdf.text(title.toUpperCase(), x, y);
+  pdf.setCharSpace(0);
+  pdf.setFontSize(13);
+  pdf.setTextColor(16,29,48);
+  pdf.text(subtitle, x, y+7, {maxWidth:w});
+}
+function infiPdfBarChart(pdf, x, y, w, h, title, labels, values, options = {}){
+  const teal = options.color || [0,108,114];
+  const green = options.color2 || [204,212,0];
+  const grid = [226,236,237];
+  infiPdfRounded(pdf, x, y, w, h, 4, [255,255,255], [207,226,228]);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(8.2); pdf.setTextColor(16,29,48);
+  pdf.text(title, x+5, y+7, {maxWidth:w-10});
+  const plotX = x + 10, plotY = y + 16, plotW = w - 18, plotH = h - 28;
+  const max = Math.max(...values.map(v=>infiPdfSafeNumber(v)), 1);
+  pdf.setDrawColor(grid[0], grid[1], grid[2]); pdf.setLineWidth(.2);
+  for(let i=0;i<=3;i++){
+    const yy = plotY + plotH - (plotH * i / 3);
+    pdf.line(plotX, yy, plotX+plotW, yy);
+  }
+  const gap = Math.min(7, plotW / Math.max(values.length * 5, 1));
+  const barW = Math.max(5, Math.min(18, (plotW - gap*(values.length-1)) / Math.max(values.length,1)));
+  values.forEach((val,i)=>{
+    const bx = plotX + i * (barW + gap);
+    const bh = Math.max(1.5, (infiPdfSafeNumber(val)/max) * plotH);
+    const grad = i % 2 === 0 ? teal : green;
+    pdf.setFillColor(grad[0], grad[1], grad[2]);
+    pdf.roundedRect(bx, plotY + plotH - bh, barW, bh, 2, 2, 'F');
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(6.5); pdf.setTextColor(93,108,132);
+    pdf.text(String(labels[i] || '').slice(0,12), bx + barW/2, plotY + plotH + 5, {align:'center', maxWidth:barW+12});
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(6);
+    pdf.text(infiPdfNum(val), bx + barW/2, plotY + plotH - bh - 2, {align:'center'});
+  });
+}
+function infiPdfHorizontalChart(pdf, x, y, w, h, title, labels, values){
+  infiPdfRounded(pdf, x, y, w, h, 4, [255,255,255], [207,226,228]);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(8.2); pdf.setTextColor(16,29,48);
+  pdf.text(title, x+5, y+7, {maxWidth:w-10});
+  const max = Math.max(...values.map(v=>infiPdfSafeNumber(v)), 1);
+  const startY = y + 16;
+  const rowH = Math.min(7, (h-22)/Math.max(values.length,1));
+  labels.forEach((label,i)=>{
+    const yy = startY + i*rowH;
+    const val = infiPdfSafeNumber(values[i]);
+    const bw = (w-58) * val / max;
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(6.8); pdf.setTextColor(35,55,86);
+    pdf.text(String(label).slice(0,18), x+5, yy+3.4);
+    pdf.setFillColor(231,240,241);
+    pdf.roundedRect(x+42, yy, w-52, 3.3, 1.6, 1.6, 'F');
+    pdf.setFillColor(0,108,114);
+    pdf.roundedRect(x+42, yy, Math.max(1.2,bw), 3.3, 1.6, 1.6, 'F');
+    pdf.setFontSize(6.2); pdf.setTextColor(93,108,132);
+    pdf.text(infiPdfNum(val), x+w-5, yy+3.4, {align:'right'});
+  });
+}
+function infiPdfRateGauge(pdf, x, y, w, h, title, rate, target, label){
+  infiPdfRounded(pdf, x, y, w, h, 4, [255,255,255], [207,226,228]);
+  const pct = Math.max(0, Math.min(1, target ? rate/target : 0));
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(8.2); pdf.setTextColor(16,29,48);
+  pdf.text(title, x+5, y+7, {maxWidth:w-10});
+  pdf.setFontSize(18); pdf.setTextColor(0,108,114);
+  pdf.text(infiPdfPct(rate), x + w/2, y + 23, {align:'center'});
+  pdf.setFillColor(231,240,241);
+  pdf.roundedRect(x+9, y+32, w-18, 5, 2.5, 2.5, 'F');
+  const red = [241,91,86], yellow = [255,172,28], green = [0,108,114];
+  const fill = pct < .35 ? red : pct < .75 ? yellow : green;
+  pdf.setFillColor(fill[0], fill[1], fill[2]);
+  pdf.roundedRect(x+9, y+32, Math.max(1,(w-18)*pct), 5, 2.5, 2.5, 'F');
+  pdf.setFont('helvetica','normal'); pdf.setFontSize(6.7); pdf.setTextColor(93,108,132);
+  pdf.text(label || `Meta ${infiPdfPct(target)}`, x + w/2, y + 44, {align:'center', maxWidth:w-10});
+}
+function infiPdfBenchmarkData(platform){
+  const rows = (Array.isArray(state?.benchmarks) ? state.benchmarks : initialState.benchmarks).filter(b => !platform || b.platform === platform);
+  return rows.slice().sort((a,b)=>infiPdfSafeNumber(b.followers)-infiPdfSafeNumber(a.followers)).slice(0,8);
+}
+function infiPdfCityData(){
+  const rows = (Array.isArray(state?.cities) ? state.cities : initialState.cities);
+  const grouped = {};
+  rows.forEach(r => {
+    const k = String(r.city || '');
+    grouped[k] = (grouped[k] || 0) + infiPdfSafeNumber(r.share);
+  });
+  return Object.entries(grouped).sort((a,b)=>b[1]-a[1]).slice(0,7);
+}
+async function exportPdfReport(){
+  const btn = document.getElementById('btnPdf');
+  const oldText = btn ? btn.textContent : 'Generar PDF';
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    alert('No se pudo cargar la librería jsPDF. Verifica la conexión a internet y vuelve a intentar.');
+    return;
+  }
+  try{
+    if(btn){
+      btn.disabled = true;
+      btn.classList.add('is-loading');
+      btn.textContent = 'Generando PDF...';
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({orientation:'p', unit:'mm', format:'a4', compress:true});
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+    const cursor = { y: margin };
+    const teal = [0,108,114], green = [204,212,0], ink = [16,29,48], muted = [93,108,132], soft = [247,251,251], line = [207,226,228];
+
+    const items = infiPdfItems();
+    const totalViews = infiPdfSum(items,'views');
+    const totalReach = infiPdfSum(items,'reach');
+    const totalInteractions = infiPdfSum(items,'interactions');
+    const totalVisits = infiPdfSum(items,'visits');
+    const totalFollowers = infiPdfSum(items,'followers');
+    const totalClicks = infiPdfSum(items,'clicks');
+    const totalPosts = infiPdfSum(items,'posts');
+    const avgResponse = items.length ? items.reduce((a,b)=>a+infiPdfSafeNumber(b.responseRate),0)/items.length : 0;
+    const ctr = totalViews ? totalClicks / totalViews * 100 : 0;
+    const engagement = totalViews ? totalInteractions / totalViews * 100 : 0;
+    const score = typeof calculateScore === 'function' ? calculateScore(items) : 0;
+
+    infiPdfHeader(pdf, cursor, pageW, margin);
+
+    const periodo = infiPdfText(document.getElementById('periodoLabel')?.textContent || state.heroTitle || initialState.heroTitle);
+    const resumen = infiPdfText(document.getElementById('executiveSummary')?.textContent || state.summary || initialState.summary);
+    infiPdfRounded(pdf, margin, cursor.y, pageW - margin*2, 46, 4, soft, line);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(teal[0],teal[1],teal[2]);
+    pdf.text('PERÍODO ANALIZADO', margin+6, cursor.y+8);
+    pdf.setFontSize(16); pdf.setTextColor(ink[0],ink[1],ink[2]);
+    pdf.text(periodo, margin+6, cursor.y+18, {maxWidth:pageW-margin*2-12});
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(8.8); pdf.setTextColor(35,55,86);
+    pdf.text(pdf.splitTextToSize(resumen, pageW-margin*2-12).slice(0,5), margin+6, cursor.y+28, {lineHeightFactor:1.2});
+    cursor.y += 54;
+
+    const kpis = [
+      ['Visualizaciones', infiPdfNum(totalViews)],
+      ['Alcance', infiPdfNum(totalReach)],
+      ['Interacciones', infiPdfNum(totalInteractions)],
+      ['Visitas', infiPdfNum(totalVisits)],
+      ['Seguidores', infiPdfNum(totalFollowers)],
+      ['Clics', infiPdfNum(totalClicks)],
+      ['CTR institucional', infiPdfPct(ctr)],
+      ['Engagement', infiPdfPct(engagement)],
+      ['Publicaciones', infiPdfNum(totalPosts)],
+      ['Respuesta mensajes', infiPdfPct(avgResponse)],
+      ['Plataformas', infiPdfNum(items.length)],
+      ['Índice gerencial', `${score}/100`]
+    ];
+
+    infiPdfSectionTitle(pdf, 'Indicadores KPI', 'Lectura consolidada del desempeño digital', margin, cursor.y, pageW-margin*2);
+    cursor.y += 12;
+    const cols = 4, gap = 4, boxW = (pageW - margin*2 - gap*(cols-1))/cols, boxH = 18;
+    kpis.forEach((kv,i)=>{
+      const x = margin + (i%cols)*(boxW+gap), y = cursor.y + Math.floor(i/cols)*(boxH+4);
+      infiPdfRounded(pdf, x, y, boxW, boxH, 3, [255,255,255], line);
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(6.2); pdf.setTextColor(muted[0],muted[1],muted[2]);
+      pdf.text(kv[0].toUpperCase(), x+3, y+6, {maxWidth:boxW-6});
+      pdf.setFontSize(12.5); pdf.setTextColor(teal[0],teal[1],teal[2]);
+      pdf.text(String(kv[1]), x+3, y+14);
+    });
+    cursor.y += 76;
+
+    infiPdfPageBreak(pdf, cursor, 70, margin, pageH);
+    infiPdfSectionTitle(pdf, 'Gráficos principales', 'Visualización ejecutiva', margin, cursor.y, pageW-margin*2);
+    cursor.y += 14;
+
+    const labels = items.map(i=>i.platform);
+    const halfW = (pageW - margin*2 - 6)/2;
+    infiPdfBarChart(pdf, margin, cursor.y, pageW-margin*2, 58, 'Evolución y tracción: visualizaciones por plataforma', labels, items.map(i=>i.views));
+    cursor.y += 65;
+
+    infiPdfPageBreak(pdf, cursor, 62, margin, pageH);
+    infiPdfBarChart(pdf, margin, cursor.y, halfW, 56, 'Interacciones por plataforma', labels, items.map(i=>i.interactions));
+    infiPdfRateGauge(pdf, margin+halfW+6, cursor.y, halfW, 56, 'Conversión a clics frente a meta', ctr, 0.20, 'Meta mínima CTR 0,20%');
+    cursor.y += 63;
+
+    infiPdfPageBreak(pdf, cursor, 62, margin, pageH);
+    infiPdfRateGauge(pdf, margin, cursor.y, halfW, 56, 'Tasa de interacción frente a meta', engagement, 4, 'Meta engagement 4%');
+    const formats = (Array.isArray(state?.formats) ? state.formats : initialState.formats)
+      .slice().sort((a,b)=>infiPdfSafeNumber(b.views)-infiPdfSafeNumber(a.views)).slice(0,6);
+    infiPdfHorizontalChart(pdf, margin+halfW+6, cursor.y, halfW, 56, 'Formatos ganadores por visualizaciones', formats.map(f=>f.format), formats.map(f=>f.views));
+    cursor.y += 63;
+
+    infiPdfPageBreak(pdf, cursor, 70, margin, pageH);
+    const bench = infiPdfBenchmarkData('');
+    infiPdfHorizontalChart(pdf, margin, cursor.y, pageW-margin*2, 66, 'Benchmark institucional: seguidores frente a referentes', bench.map(b=>b.account), bench.map(b=>b.followers));
+    cursor.y += 73;
+
+    infiPdfPageBreak(pdf, cursor, 62, margin, pageH);
+    const city = infiPdfCityData();
+    infiPdfHorizontalChart(pdf, margin, cursor.y, halfW, 58, 'Audiencia territorial: principales ciudades', city.map(c=>c[0]), city.map(c=>c[1]));
+    const followersVals = items.map(i=>i.followers);
+    infiPdfBarChart(pdf, margin+halfW+6, cursor.y, halfW, 58, 'Comunidad por plataforma', labels, followersVals);
+    cursor.y += 66;
+
+    const alerts = (Array.isArray(state.manualAlerts) ? state.manualAlerts : (typeof buildAlerts === 'function' ? buildAlerts(items) : [])).slice(0,6);
+    const recs = (Array.isArray(state.recommendations) ? state.recommendations : initialState.recommendations || []).slice(0,8);
+
+    infiPdfPageBreak(pdf, cursor, 86, margin, pageH);
+    infiPdfSectionTitle(pdf, 'Semáforo gerencial', 'Alertas y ruta de mejora priorizada', margin, cursor.y, pageW-margin*2);
+    cursor.y += 13;
+    const listW = (pageW - margin*2 - 6)/2;
+    const startY = cursor.y;
+    infiPdfRounded(pdf, margin, startY, listW, 76, 4, [255,255,255], line);
+    infiPdfRounded(pdf, margin+listW+6, startY, listW, 76, 4, [255,255,255], line);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(ink[0],ink[1],ink[2]);
+    pdf.text('Alertas críticas', margin+4, startY+7);
+    let yy = startY + 15;
+    alerts.forEach(a=>{
+      pdf.setFillColor(204,212,0); pdf.circle(margin+5, yy-1.5, 1.5, 'F');
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(7.2); pdf.setTextColor(35,55,86);
+      const lineTxt = `${infiPdfText(a.title)}: ${infiPdfText(a.body)}`;
+      const lines = pdf.splitTextToSize(lineTxt, listW-12).slice(0,2);
+      pdf.text(lines, margin+9, yy, {lineHeightFactor:1.1});
+      yy += lines.length*3.9 + 2;
+    });
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(ink[0],ink[1],ink[2]);
+    pdf.text('Recomendaciones priorizadas', margin+listW+10, startY+7);
+    yy = startY + 15;
+    recs.forEach((r,i)=>{
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7.2); pdf.setTextColor(35,55,86);
+      const lines = pdf.splitTextToSize(`${i+1}. ${infiPdfText(r)}`, listW-10).slice(0,2);
+      pdf.text(lines, margin+listW+10, yy, {lineHeightFactor:1.1});
+      yy += lines.length*3.9 + 2;
+    });
+
+    infiPdfFooter(pdf, pageW, pageH, margin);
+    const fileDate = new Date().toISOString().slice(0,10);
+    pdf.save(`Informe_Plan_Medios_INFIHUILA_${fileDate}.pdf`);
+  }catch(err){
+    console.error('Error generando PDF robusto:', err);
+    alert('No fue posible generar el PDF en este navegador. Recarga la página y vuelve a intentarlo. Detalle técnico en consola.');
+  }finally{
+    if(btn){
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+      btn.textContent = oldText || 'Generar PDF';
+    }
+  }
+}
+window.exportPdfReport = exportPdfReport;

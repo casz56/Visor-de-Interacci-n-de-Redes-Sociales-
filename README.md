@@ -18,3 +18,8 @@ Aplicativo web en HTML, CSS y JavaScript para el seguimiento del desempeño del 
 
 Sube los archivos `index.html`, `style.css` y `app.js` a tu repositorio. El logo está incrustado en el HTML, por lo que no depende de rutas externas.
 
+
+
+## Actualización PDF robusta
+
+El botón **Generar PDF** fue ajustado para funcionar en GitHub Pages sin depender de capturas de canvas ni html2canvas. El informe se construye directamente con jsPDF y gráficos vectoriales generados desde los datos del aplicativo.
