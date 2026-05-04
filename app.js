@@ -675,7 +675,7 @@ function initEvents(){
       saveState();
     });
   });
-  $('btnExport').addEventListener('click', exportCsv);
+  $('btnExport')?.addEventListener('click', exportCsv);
   $('btnAddRow').addEventListener('click', addRow);
   $('btnUpload').addEventListener('click', () => $('fileInput').click());
   $('fileInput').addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });

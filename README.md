@@ -23,3 +23,7 @@ Sube los archivos `index.html`, `style.css` y `app.js` a tu repositorio. El logo
 ## Actualización PDF robusta
 
 El botón **Generar PDF** fue ajustado para funcionar en GitHub Pages sin depender de capturas de canvas ni html2canvas. El informe se construye directamente con jsPDF y gráficos vectoriales generados desde los datos del aplicativo.
+
+
+## Ajuste final
+Se retiraron los botones de exportación CSV y generación PDF de la interfaz, manteniendo la carga de PDF, Excel y CSV para actualización de datos.
