@@ -1,4 +1,5 @@
 const initialState = {
+  heroTitle: "Febrero 2026 · Marzo 2026",
   summary: "Durante febrero y marzo de 2026, INFIHUILA consolidó una presencia digital en crecimiento en Facebook e Instagram. Facebook alcanzó 39,9 mil visualizaciones en febrero (+718,8%) e Instagram llegó a 19.924 visualizaciones y 958 interacciones en marzo. El desempeño es 100% orgánico, pero exige intervención en clics, respuesta a mensajes, historias y consistencia editorial.",
   platforms: [
     { platform: "Facebook", period: "Febrero 2026", views: 39900, reach: 14946, interactions: 488, visits: 870, newFollowers: 61, clicks: 5, responseRate: 0, followers: 3613, posts: 16, growthViews: 718.8, growthInteractions: 650.8, organic: 100 },
@@ -50,6 +51,7 @@ const initialState = {
 };
 
 let state = JSON.parse(localStorage.getItem('infihuilaMediaDashboardFinal')) || structuredClone(initialState);
+state.heroTitle = state.heroTitle || initialState.heroTitle;
 if(!state.audience) state.audience = structuredClone(initialState.audience);
 if(!state.benchmarks) state.benchmarks = structuredClone(initialState.benchmarks);
 let charts = {};
@@ -179,11 +181,12 @@ function renderFilters(){
 
 function renderSummary(){
   const items = byFilter(state.platforms);
-  $('executiveSummary').textContent = state.summary;
-  $('platformCount').textContent = new Set(items.map(x => x.platform)).size || 0;
-  $('totalClicks').textContent = formatNumber(sum(items, 'clicks'));
-  $('totalAlerts').textContent = buildAlerts(items).filter(x => x.type !== 'ok').length;
-  $('periodoLabel').textContent = [...new Set(items.map(x=>x.period))].join(' · ') || 'Sin datos cargados';
+  const computedPeriod = [...new Set(items.map(x=>x.period))].join(' · ') || 'Sin datos cargados';
+  if(!$('executiveSummary').matches(':focus')) $('executiveSummary').textContent = state.summary || initialState.summary;
+  if(!$('periodoLabel').matches(':focus')) $('periodoLabel').textContent = state.heroTitle || computedPeriod;
+  const platformCount = $('platformCount'); if(platformCount) platformCount.textContent = new Set(items.map(x => x.platform)).size || 0;
+  const totalClicks = $('totalClicks'); if(totalClicks) totalClicks.textContent = formatNumber(sum(items, 'clicks'));
+  const totalAlerts = $('totalAlerts'); if(totalAlerts) totalAlerts.textContent = buildAlerts(items).filter(x => x.type !== 'ok').length;
   const score = calcScore(items);
   $('scoreNumber').textContent = score;
   $('sideScore').textContent = score;
@@ -650,6 +653,28 @@ function initEvents(){
   $('periodFilter').addEventListener('change', renderAll);
   $('chartMode')?.addEventListener('change', e => { chartUI.mode = e.target.value; renderCharts(); });
   $('btnReset').addEventListener('click', () => { state = structuredClone(initialState); saveState(); renderAll(); $('uploadStatus').textContent = 'Datos iniciales restaurados.'; });
+  $('saveHeroText')?.addEventListener('click', () => {
+    state.heroTitle = $('periodoLabel').textContent.trim() || initialState.heroTitle;
+    state.summary = $('executiveSummary').textContent.trim() || initialState.summary;
+    saveState();
+    const status = $('uploadStatus'); if(status) status.textContent = 'Texto superior guardado correctamente.';
+  });
+  $('restoreHeroText')?.addEventListener('click', () => {
+    state.heroTitle = initialState.heroTitle;
+    state.summary = initialState.summary;
+    saveState();
+    renderSummary();
+    const status = $('uploadStatus'); if(status) status.textContent = 'Texto superior restaurado a la base inicial.';
+  });
+  ['periodoLabel','executiveSummary'].forEach(id => {
+    const el = $(id);
+    if(!el) return;
+    el.addEventListener('blur', () => {
+      state.heroTitle = $('periodoLabel').textContent.trim() || initialState.heroTitle;
+      state.summary = $('executiveSummary').textContent.trim() || initialState.summary;
+      saveState();
+    });
+  });
   $('btnExport').addEventListener('click', exportCsv);
   $('btnAddRow').addEventListener('click', addRow);
   $('btnUpload').addEventListener('click', () => $('fileInput').click());

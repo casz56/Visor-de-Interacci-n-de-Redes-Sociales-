@@ -736,3 +736,19 @@ button{user-select:none}
     --chart-h:250px !important; height:250px !important; min-height:250px !important; max-height:250px !important;
   }
 }
+
+/* --- Ajuste final: bloque superior editable y sin tarjetas duplicadas --- */
+.editable-hero{min-height:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:.55rem;padding-bottom:2.4rem}
+.hero-edit-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;position:relative;z-index:2}
+.edit-hint{font-size:var(--fs-xs);font-weight:900;color:var(--blue);background:rgba(204,212,0,.14);border:1px solid rgba(204,212,0,.45);border-radius:999px;padding:.35rem .65rem;white-space:nowrap}
+#periodoLabel[contenteditable="true"],#executiveSummary[contenteditable="true"]{outline:none;border-radius:18px;transition:background .2s ease, box-shadow .2s ease, border-color .2s ease}
+#periodoLabel[contenteditable="true"]{padding:.12rem .25rem;margin-left:-.25rem;border:1px solid transparent}
+#executiveSummary[contenteditable="true"]{padding:.65rem .8rem;margin-left:-.8rem;border:1px dashed rgba(0,108,114,.20);background:rgba(255,255,255,.28)}
+#periodoLabel[contenteditable="true"]:focus,#executiveSummary[contenteditable="true"]:focus{background:rgba(255,255,255,.78);box-shadow:0 16px 40px rgba(0,108,114,.12);border-color:rgba(0,108,114,.35)}
+.hero-edit-actions{position:relative;z-index:2;display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.35rem}
+.mini-action{border:0;border-radius:999px;padding:.64rem .9rem;font-family:inherit;font-weight:900;color:white;background:linear-gradient(135deg,var(--blue),#07858a);box-shadow:0 14px 28px rgba(0,108,114,.17);cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, filter .15s ease}
+.mini-action:hover{transform:translateY(-1px);filter:saturate(1.05);box-shadow:0 18px 34px rgba(0,108,114,.22)}
+.mini-action.ghost{color:var(--blue);background:rgba(255,255,255,.78);border:1px solid var(--stroke);box-shadow:none}
+.hero-command{justify-content:flex-start;min-height:clamp(250px,26vw,380px)}
+.pulse-strip{height:22px;opacity:.38}
+@media (max-width:640px){.hero-edit-head{align-items:flex-start;flex-direction:column}.edit-hint{font-size:.68rem}.hero-edit-actions{display:grid;grid-template-columns:1fr;width:100%}.mini-action{width:100%}#executiveSummary[contenteditable="true"]{margin-left:0;padding:.7rem}.hero-command{min-height:0}.pulse-strip{display:none}}

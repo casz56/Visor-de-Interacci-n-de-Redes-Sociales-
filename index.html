@@ -52,15 +52,17 @@
 
       <section id="comando" class="command-grid">
         <article class="command-card hero-command">
-          <div class="hero-copy">
-            <p class="eyebrow">Período analizado</p>
-            <h2 id="periodoLabel">Febrero 2026 · Marzo 2026</h2>
-            <p id="executiveSummary"></p>
-          </div>
-          <div class="hero-metrics">
-            <div><span>Plataformas</span><strong id="platformCount">2</strong></div>
-            <div><span>Clics</span><strong id="totalClicks">5</strong></div>
-            <div><span>Alertas</span><strong id="totalAlerts">3</strong></div>
+          <div class="hero-copy editable-hero">
+            <div class="hero-edit-head">
+              <p class="eyebrow">Período analizado</p>
+              <span class="edit-hint">Clic para editar</span>
+            </div>
+            <h2 id="periodoLabel" contenteditable="true" spellcheck="false" title="Editar período analizado">Febrero 2026 · Marzo 2026</h2>
+            <p id="executiveSummary" contenteditable="true" spellcheck="true" title="Editar resumen ejecutivo"></p>
+            <div class="hero-edit-actions">
+              <button id="saveHeroText" class="mini-action" type="button">Guardar texto</button>
+              <button id="restoreHeroText" class="mini-action ghost" type="button">Restaurar texto base</button>
+            </div>
           </div>
           <div class="pulse-strip">
             <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
