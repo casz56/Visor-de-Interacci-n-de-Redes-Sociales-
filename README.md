@@ -1,15 +1,20 @@
-# INFIHUILA - Dashboard Plan de Medios
+# INFIHUILA - Aplicativo de gestión del Plan de Medios
 
-Versión final ajustada:
+Aplicativo web en HTML, CSS y JavaScript para el seguimiento del desempeño del plan de medios institucional.
 
-- Logo INFIHUILA incrustado para GitHub Pages.
-- Gráficos con tamaños estándar, grilla responsive y mejor legibilidad.
-- Filtros interactivos por plataforma, indicador y modo gráfico.
-- Semáforo gerencial editable: agregar, editar, borrar y recalcular alertas.
-- Ruta de mejora editable: agregar, editar y borrar recomendaciones.
-- Carga de información por PDF, Excel, XLS o CSV.
+## Funcionalidades principales
 
-Para publicar en GitHub Pages, sube el contenido de esta carpeta y activa Pages sobre la rama principal.
+- Logo INFIHUILA incrustado en base64 para despliegue correcto en GitHub Pages.
+- Dashboard gerencial con KPI dinámicos.
+- Carga de información desde PDF, Excel, XLS y CSV.
+- Gráficos interactivos con filtros de plataforma, indicadores y modo de visualización.
+- Semáforo gerencial editable.
+- Ruta de mejora editable.
+- Tabla de datos editable.
+- Exportación a CSV.
+- Nuevo botón **Generar PDF** con informe institucional A4 que incluye logo, resumen, KPI, gráficos, alertas y recomendaciones.
 
+## Publicación en GitHub Pages
 
-Actualización: se añadieron gráficos comparativos de audiencia territorial, composición demográfica y brecha frente a referentes, con datos tomados del informe base febrero-marzo 2026.
+Sube los archivos `index.html`, `style.css` y `app.js` a tu repositorio. El logo está incrustado en el HTML, por lo que no depende de rutas externas.
+

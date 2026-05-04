@@ -940,3 +940,151 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 document.addEventListener('DOMContentLoaded', () => { initEvents(); renderAll(); });
+
+/* =========================================================
+   EXPORTACIÓN PDF INSTITUCIONAL - A4
+   Genera un reporte bonito con logo, KPI y gráficos del tablero.
+   ========================================================= */
+function pdfEscape(value){
+  return String(value ?? '').replace(/[&<>\"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
+}
+function getReportItems(){
+  return byFilter(state.platforms).length ? byFilter(state.platforms) : state.platforms;
+}
+function metricForPdf(){
+  const items = getReportItems();
+  const totalViews = sum(items,'views');
+  const totalReach = sum(items,'reach');
+  const totalInteractions = sum(items,'interactions');
+  const totalVisits = sum(items,'visits');
+  const totalFollowers = sum(items,'followers');
+  const totalClicks = sum(items,'clicks');
+  const totalPosts = sum(items,'posts');
+  const avgResponse = items.length ? items.reduce((a,b)=>a+Number(b.responseRate||0),0)/items.length : 0;
+  return [
+    ['Visualizaciones', formatNumber(totalViews)],
+    ['Alcance', formatNumber(totalReach)],
+    ['Interacciones', formatNumber(totalInteractions)],
+    ['Visitas', formatNumber(totalVisits)],
+    ['Seguidores', formatNumber(totalFollowers)],
+    ['Clics', formatNumber(totalClicks)],
+    ['CTR institucional', percent(totalViews ? totalClicks/totalViews*100 : 0)],
+    ['Engagement', percent(totalViews ? totalInteractions/totalViews*100 : 0)],
+    ['Publicaciones', formatNumber(totalPosts)],
+    ['Respuesta mensajes', percent(avgResponse)],
+    ['Plataformas', formatNumber(items.length)],
+    ['Índice gerencial', `${calculateScore(items)}/100`]
+  ];
+}
+function chartImageForPdf(id){
+  const canvas = $(id);
+  if(!canvas) return '';
+  try { return canvas.toDataURL('image/png', 1); } catch(e){ return ''; }
+}
+function buildPdfReportNode(){
+  const logo = $('brandLogo')?.src || '';
+  const periodo = $('periodoLabel')?.textContent?.trim() || state.heroTitle || initialState.heroTitle;
+  const resumen = $('executiveSummary')?.textContent?.trim() || state.summary || initialState.summary;
+  const kpis = metricForPdf();
+  const chartsForPdf = [
+    ['Radar de desempeño por plataforma','radarChart',false],
+    ['Evolución y tracción del plan de medios','trendChart',true],
+    ['Conversión: clics sobre visualizaciones','conversionChart',false],
+    ['Formatos ganadores','formatChart',false],
+    ['Benchmark institucional','benchmarkChart',true],
+    ['Audiencia territorial','cityAudienceChart',true],
+    ['Composición demográfica','genderAudienceChart',false],
+    ['Brecha hacia referente objetivo','referenceGapChart',false],
+    ['Tasa de interacción frente a meta','engagementPieChart',false],
+    ['Conversión a clics frente a meta','ctrPieChart',false],
+    ['Embudo digital','funnelChart',false],
+    ['Eficiencia editorial','efficiencyChart',false]
+  ].map(([title,id,wide]) => ({ title, img: chartImageForPdf(id), wide })).filter(x => x.img);
+  const alerts = editableAlerts ? editableAlerts() : buildAlerts(getReportItems());
+  const recs = state.recommendations || [];
+
+  const shell = document.createElement('div');
+  shell.className = 'pdf-export-shell';
+  shell.innerHTML = `
+    <div class="pdf-report">
+      <section class="pdf-cover">
+        <img src="${logo}" alt="Logo INFIHUILA">
+        <p class="pdf-eyebrow">Informe gerencial de comunicaciones</p>
+        <h1>Desempeño del plan de medios</h1>
+        <h2>${pdfEscape(periodo)}</h2>
+        <p>${pdfEscape(resumen)}</p>
+      </section>
+      <section class="pdf-section">
+        <div class="pdf-section-title"><div><span>Indicadores principales</span><h3>KPI consolidados</h3></div><span>Tablero INFIHUILA</span></div>
+        <div class="pdf-kpi-grid">
+          ${kpis.map(([label,value])=>`<div class="pdf-kpi"><span>${pdfEscape(label)}</span><strong>${pdfEscape(value)}</strong></div>`).join('')}
+        </div>
+      </section>
+      <section class="pdf-section">
+        <div class="pdf-section-title"><div><span>Visualización ejecutiva</span><h3>Gráficos principales</h3></div><span>PDF A4</span></div>
+        <div class="pdf-chart-grid">
+          ${chartsForPdf.map((c,i)=>`<div class="pdf-chart-card ${c.wide || i===1 || i===4 || i===5 ? 'wide' : ''}"><h4>${pdfEscape(c.title)}</h4><img src="${c.img}" alt="${pdfEscape(c.title)}"></div>`).join('')}
+        </div>
+      </section>
+      <section class="pdf-section">
+        <div class="pdf-list-grid">
+          <div class="pdf-list-box"><h4>Semáforo gerencial</h4><ul>${alerts.map(a=>`<li><strong>${pdfEscape(a.title)}</strong>: ${pdfEscape(a.body)}</li>`).join('')}</ul></div>
+          <div class="pdf-list-box"><h4>Ruta de mejora priorizada</h4><ol>${recs.slice(0,10).map(r=>`<li>${pdfEscape(r)}</li>`).join('')}</ol></div>
+        </div>
+      </section>
+      <div class="pdf-footer">Instituto Financiero para el Desarrollo del Huila - INFIHUILA · Reporte generado desde el aplicativo de gestión del plan de medios</div>
+    </div>`;
+  document.body.appendChild(shell);
+  return shell;
+}
+async function exportPdfReport(){
+  const btn = $('btnPdf');
+  if(!window.html2canvas || !window.jspdf){
+    alert('No se pudieron cargar las librerías de PDF. Verifica la conexión a internet e intenta nuevamente.');
+    return;
+  }
+  const oldText = btn ? btn.textContent : '';
+  try{
+    if(btn){ btn.classList.add('is-loading'); btn.textContent = 'Generando PDF...'; }
+    renderCharts();
+    await new Promise(r => setTimeout(r, 450));
+    const node = buildPdfReportNode();
+    const canvas = await html2canvas(node, {
+      scale: 2,
+      backgroundColor: '#f7fbfb',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      windowWidth: 794
+    });
+    node.remove();
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const imgW = pageW - margin*2;
+    const imgH = canvas.height * imgW / canvas.width;
+    let y = margin;
+    let heightLeft = imgH;
+    pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST');
+    heightLeft -= (pageH - margin*2);
+    while(heightLeft > 0){
+      pdf.addPage();
+      y = margin - (imgH - heightLeft);
+      pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST');
+      heightLeft -= (pageH - margin*2);
+    }
+    const fileDate = new Date().toISOString().slice(0,10);
+    pdf.save(`Informe_Plan_Medios_INFIHUILA_${fileDate}.pdf`);
+  }catch(err){
+    console.error(err);
+    alert('No fue posible generar el PDF. Revisa que los gráficos hayan cargado correctamente.');
+  }finally{
+    if(btn){ btn.classList.remove('is-loading'); btn.textContent = oldText || 'Generar PDF'; }
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  $('btnPdf')?.addEventListener('click', exportPdfReport);
+});
