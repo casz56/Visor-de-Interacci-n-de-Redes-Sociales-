@@ -76,6 +76,9 @@ const percent = (n) => `${Number(n || 0).toLocaleString('es-CO', { maximumFracti
 const sum = (items, key) => items.reduce((a, b) => a + Number(b[key] || 0), 0);
 const conversionRate = (item) => item.views ? (item.clicks / item.views) * 100 : 0;
 const engagementRate = (item) => item.views ? (item.interactions / item.views) * 100 : 0;
+const visitRate = (item) => item.views ? (item.visits / item.views) * 100 : 0;
+const viewsPerPost = (item) => item.posts ? item.views / item.posts : 0;
+const interactionsPerPost = (item) => item.posts ? item.interactions / item.posts : 0;
 const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 
 function saveState(){ localStorage.setItem('infihuilaMediaDashboardFinal', JSON.stringify(state)); }
@@ -203,7 +206,11 @@ function renderKpis(){
     { icon:'+', label:'Nuevos seguidores', value:formatNumber(totalNewFollowers), note:'Crecimiento neto de comunidad digital.', target:kpiStatus(totalNewFollowers, 160), badge:'Crecimiento' },
     { icon:'↗', label:'Clics en enlace', value:formatNumber(totalClicks), note:`Conversión: ${percent(conversion)}. Meta mínima 0,20%.`, target:kpiStatus(conversion, .20), badge:'Conversión' },
     { icon:'✉', label:'Respuesta mensajes', value:percent(response), note:'Indicador de servicio ciudadano digital.', target:kpiStatus(response, 90), badge:'Servicio' },
-    { icon:'▦', label:'Frecuencia editorial', value:postsAvg.toFixed(1), note:'Promedio de publicaciones por plataforma.', target:kpiStatus(postsAvg, 12), badge:'Ritmo' }
+    { icon:'▦', label:'Frecuencia editorial', value:postsAvg.toFixed(1), note:'Promedio de publicaciones por plataforma.', target:kpiStatus(postsAvg, 12), badge:'Ritmo' },
+    { icon:'≈', label:'Engagement rate', value:percent(engagement), note:'Interacciones sobre visualizaciones; mide afinidad real.', target:kpiStatus(engagement, 4), badge:'Afinidad' },
+    { icon:'⌖', label:'CTR institucional', value:percent(conversion), note:'Clics sobre visualizaciones; mide tráfico a servicios.', target:kpiStatus(conversion, .20), badge:'Tráfico' },
+    { icon:'⇢', label:'Visitas por mil vistas', value:(totalViews ? (totalVisits/totalViews*1000) : 0).toFixed(1), note:'Capacidad de transformar alcance en visitas al perfil o página.', target:kpiStatus(totalViews ? (totalVisits/totalViews*1000) : 0, 20), badge:'Interés' },
+    { icon:'◇', label:'Visualizaciones por post', value:formatNumber(postsAvg ? totalViews/postsAvg/items.length : 0), note:'Productividad promedio del calendario editorial.', target:kpiStatus(postsAvg ? totalViews/postsAvg/items.length : 0, 2500), badge:'Productividad' }
   ];
   const grid = $('kpiGrid');
   const tpl = $('kpiTemplate');
@@ -319,6 +326,32 @@ function renderCharts(){
     ]},
     options: axisOptions({ horizontal:true, dual:true })
   });
+
+  const funnelCanvas = $('funnelChart');
+  if(funnelCanvas){
+    charts.funnel = new Chart(funnelCanvas, {
+      type:'bar',
+      data:{ labels, datasets:[
+        { label:'Engagement %', data:items.map(x=>engagementRate(x)), backgroundColor:'rgba(204,212,0,.86)', borderRadius:10, maxBarThickness:34, categoryPercentage:.62, barPercentage:.72 },
+        { label:'Visita %', data:items.map(x=>visitRate(x)), backgroundColor:'rgba(0,108,114,.78)', borderRadius:10, maxBarThickness:34, categoryPercentage:.62, barPercentage:.72 },
+        { label:'CTR %', data:items.map(x=>conversionRate(x)), backgroundColor:'#f59e0b', borderRadius:10, maxBarThickness:34, categoryPercentage:.62, barPercentage:.72 }
+      ]},
+      options: percentAxisOptions({ horizontal:true })
+    });
+  }
+
+  const efficiencyCanvas = $('efficiencyChart');
+  if(efficiencyCanvas){
+    const ectx = efficiencyCanvas.getContext('2d');
+    charts.efficiency = new Chart(ectx, {
+      type:'bar',
+      data:{ labels, datasets:[
+        { label:'Visualizaciones por publicación', data:items.map(x=>viewsPerPost(x)), backgroundColor:gradient(ectx, COLORS.blue, 'rgba(0,108,114,.22)'), borderRadius:12, maxBarThickness:48, categoryPercentage:.58, barPercentage:.72 },
+        { label:'Interacciones por publicación', data:items.map(x=>interactionsPerPost(x)), type:'line', yAxisID:'y1', borderColor:COLORS.green, backgroundColor:COLORS.green, tension:.35, pointRadius:5, pointHoverRadius:8, borderWidth:3 }
+      ]},
+      options: axisOptions({ dual:true })
+    });
+  }
 }
 
 function axisOptions({ horizontal=false, dual=false } = {}){
@@ -334,6 +367,20 @@ function axisOptions({ horizontal=false, dual=false } = {}){
       x:{ beginAtZero:true, grid:{ display:false }, ticks:{ color:COLORS.muted, autoSkip:true, maxTicksLimit:6, maxRotation:0, callback:(v)=> typeof v === 'number' ? formatNumber(v) : v }},
       y:{ beginAtZero:true, grid:{ color:'rgba(0,108,114,.10)' }, ticks:{ color:COLORS.muted, maxTicksLimit:6, callback:(v)=> typeof v === 'number' ? formatNumber(v) : v }},
       ...(dual ? { y1:{ beginAtZero:true, position:'right', grid:{ drawOnChartArea:false }, ticks:{ color:COLORS.muted, maxTicksLimit:5, callback:(v)=>formatNumber(v) }} } : {})
+    }
+  };
+}
+
+function percentAxisOptions({ horizontal=false } = {}){
+  return {
+    ...axisOptions({ horizontal }),
+    plugins:{
+      legend:{ position:'bottom', labels:{ usePointStyle:true, padding:18, font:{ weight:'bold' }}},
+      tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${percent(ctx.raw)}` }}
+    },
+    scales:{
+      x:{ beginAtZero:true, grid:{ display:false }, ticks:{ color:COLORS.muted, maxTicksLimit:6, callback:(v)=>percent(v) }},
+      y:{ beginAtZero:true, grid:{ color:'rgba(0,108,114,.10)' }, ticks:{ color:COLORS.muted, autoSkip:false, callback:(v)=> typeof v === 'number' ? percent(v) : v }}
     }
   };
 }
