@@ -10,3 +10,6 @@ Versión final ajustada:
 - Carga de información por PDF, Excel, XLS o CSV.
 
 Para publicar en GitHub Pages, sube el contenido de esta carpeta y activa Pages sobre la rama principal.
+
+
+Actualización: se añadieron gráficos comparativos de audiencia territorial, composición demográfica y brecha frente a referentes, con datos tomados del informe base febrero-marzo 2026.

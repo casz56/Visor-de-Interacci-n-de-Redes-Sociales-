@@ -716,3 +716,23 @@ button{user-select:none}
     max-height:250px !important;
   }
 }
+
+
+/* Gráficos comparativos de audiencia agregados */
+.comparative-card{
+  background:
+    radial-gradient(circle at 92% 12%, rgba(204,212,0,.12), transparent 36%),
+    linear-gradient(145deg, rgba(255,255,255,.98), rgba(247,252,252,.92)) !important;
+}
+#cityAudienceChart{--chart-h:340px !important;}
+#genderAudienceChart,#referenceGapChart{--chart-h:300px !important;}
+@media (max-width:820px){
+  #cityAudienceChart,#genderAudienceChart,#referenceGapChart{
+    --chart-h:285px !important; height:285px !important; min-height:285px !important; max-height:285px !important;
+  }
+}
+@media (max-width:460px){
+  #cityAudienceChart,#genderAudienceChart,#referenceGapChart{
+    --chart-h:250px !important; height:250px !important; min-height:250px !important; max-height:250px !important;
+  }
+}

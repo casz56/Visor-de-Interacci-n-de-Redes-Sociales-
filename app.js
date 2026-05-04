@@ -28,6 +28,14 @@ const initialState = {
     { platform: "Instagram", account: "Infivalle", followers: 2500, posts: 21 },
     { platform: "Instagram", account: "Infihuila", followers: 726, posts: 16 }
   ],
+  audience: [
+    { platform: "Facebook", followers: 3613, women: 60.7, men: 39.3, cities: [
+      { city: "Neiva", share: 44.9 }, { city: "Pitalito", share: 6.3 }, { city: "La Plata", share: 6.2 }, { city: "Bogotá", share: 5.0 }, { city: "Garzón", share: 3.1 }
+    ] },
+    { platform: "Instagram", followers: 726, women: 53.8, men: 46.2, cities: [
+      { city: "Neiva", share: 55.1 }, { city: "Bogotá", share: 7.7 }, { city: "La Plata", share: 4.0 }, { city: "Garzón", share: 3.6 }, { city: "Pitalito", share: 2.9 }
+    ] }
+  ],
   recommendations: [
     "Convertir cada publicación de alto alcance en tráfico: enlace en bio, botones de acción y URL corta por campaña.",
     "Adoptar un protocolo de atención digital: responsable, tablero diario y respuesta a mensajes en menos de 24 horas.",
@@ -42,6 +50,8 @@ const initialState = {
 };
 
 let state = JSON.parse(localStorage.getItem('infihuilaMediaDashboardFinal')) || structuredClone(initialState);
+if(!state.audience) state.audience = structuredClone(initialState.audience);
+if(!state.benchmarks) state.benchmarks = structuredClone(initialState.benchmarks);
 let charts = {};
 let chartUI = { platforms: [], metrics: ['views','interactions','clicks'], mode: 'mixed' };
 const METRIC_CONFIG = {
@@ -235,6 +245,17 @@ function gradient(ctx, a, b){
   const g = ctx.createLinearGradient(0, 0, 0, 420);
   g.addColorStop(0, a); g.addColorStop(1, b);
   return g;
+}
+
+function selectedAudience(){
+  const selected = new Set(getChartPlatforms());
+  return (state.audience || initialState.audience || []).filter(x => selected.has(x.platform));
+}
+function closestReference(platform){
+  const benches = (state.benchmarks || []).filter(x => x.platform === platform && !x.account.toLowerCase().includes('infihuila')).sort((a,b)=>a.followers-b.followers);
+  const current = (state.benchmarks || []).find(x => x.platform === platform && x.account.toLowerCase().includes('infihuila'));
+  if(!current) return benches[0] || null;
+  return benches.find(x => x.followers >= current.followers) || benches[benches.length-1] || null;
 }
 function renderCharts(){
   if(!window.Chart) return;
@@ -774,6 +795,17 @@ function cleanAxisOptions({horizontal=false, dual=false, percent=false}={}){
   });
 }
 function percentValue(v){ return `${Number(v||0).toLocaleString('es-CO',{maximumFractionDigits:2})}%`; }
+
+function selectedAudience(){
+  const selected = new Set(getChartPlatforms());
+  return (state.audience || initialState.audience || []).filter(x => selected.has(x.platform));
+}
+function closestReference(platform){
+  const benches = (state.benchmarks || []).filter(x => x.platform === platform && !x.account.toLowerCase().includes('infihuila')).sort((a,b)=>a.followers-b.followers);
+  const current = (state.benchmarks || []).find(x => x.platform === platform && x.account.toLowerCase().includes('infihuila'));
+  if(!current) return benches[0] || null;
+  return benches.find(x => x.followers >= current.followers) || benches[benches.length-1] || null;
+}
 function renderCharts(){
   if(!window.Chart) return;
   destroyCharts();
@@ -829,6 +861,41 @@ function renderCharts(){
   if(engPie){ charts.engagementPie = new Chart(engPie,{ type:'doughnut', data:{ labels:['Interacciones logradas','Brecha frente a meta'], datasets:[{data:[totalInteractions,Math.max(gapEng,1)],borderWidth:3,borderColor:'#fff',cutout:'70%',backgroundColor:[COLORS.green,'rgba(0,108,114,.13)']}]}, options:kpiPieOptions(`Interacción: ${percent(engagement)}`,`Meta institucional: 4%`) }); }
   const ctrPie=$('ctrPieChart');
   if(ctrPie){ charts.ctrPie = new Chart(ctrPie,{ type:'doughnut', data:{ labels:['Clics generados','Clics faltantes'], datasets:[{data:[Math.max(totalClicks,0.01),Math.max(gapClicks,1)],borderWidth:3,borderColor:'#fff',cutout:'70%',backgroundColor:[COLORS.blue,'rgba(245,158,11,.18)']}]}, options:kpiPieOptions(`CTR: ${percent(ctr)}`,`Meta mínima: 0,20%`) }); }
+
+  const aud = selectedAudience();
+  const cityEl = $('cityAudienceChart');
+  if(cityEl){
+    const cityNames = [...new Set(aud.flatMap(a => (a.cities||[]).map(c => c.city)))];
+    const datasetsCity = aud.map((a,i)=>({
+      label:a.platform,
+      data:cityNames.map(city => ((a.cities||[]).find(c => c.city === city)?.share) || 0),
+      backgroundColor:i%2?COLORS.green:COLORS.blue,
+      borderRadius:9,
+      maxBarThickness:24
+    }));
+    charts.cityAudience = new Chart(cityEl,{ type:'bar', data:{labels:cityNames,datasets:datasetsCity}, options:cleanAxisOptions({horizontal:true,percent:true}) });
+  }
+
+  const genderEl = $('genderAudienceChart');
+  if(genderEl){
+    charts.genderAudience = new Chart(genderEl,{ type:'bar', data:{ labels:aud.map(a=>a.platform), datasets:[
+      {label:'Mujeres',data:aud.map(a=>a.women),backgroundColor:COLORS.green,borderRadius:9,maxBarThickness:30},
+      {label:'Hombres',data:aud.map(a=>a.men),backgroundColor:COLORS.blue,borderRadius:9,maxBarThickness:30}
+    ]}, options:cleanAxisOptions({percent:true}) });
+  }
+
+  const gapEl = $('referenceGapChart');
+  if(gapEl){
+    const refs = aud.map(a => {
+      const current = (state.benchmarks||[]).find(x=>x.platform===a.platform && x.account.toLowerCase().includes('infihuila')) || {followers:a.followers};
+      const ref = closestReference(a.platform) || {account:'Referente',followers:current.followers};
+      return {platform:a.platform, current:current.followers, refName:ref.account, target:ref.followers, gap:Math.max(0, ref.followers-current.followers)};
+    });
+    charts.referenceGap = new Chart(gapEl,{ type:'bar', data:{ labels:refs.map(r=>`${r.platform} · ${r.refName}`), datasets:[
+      {label:'Infihuila actual',data:refs.map(r=>r.current),backgroundColor:COLORS.green,borderRadius:9,maxBarThickness:26},
+      {label:'Brecha por cerrar',data:refs.map(r=>r.gap),backgroundColor:'rgba(0,108,114,.22)',borderRadius:9,maxBarThickness:26}
+    ]}, options:cleanAxisOptions({horizontal:true}) });
+  }
 }
 function kpiPieOptions(title, subtitle){
   return baseChartOptions({
