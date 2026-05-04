@@ -168,16 +168,16 @@
 
         <div class="chart-stage side-pie side-pie-engagement">
           <div class="card-heading compact">
-            <div><p class="eyebrow">KPI graficable</p><h3>Torta de tasa de interacción</h3></div>
-            <span>Interacciones vs meta 4%</span>
+            <div><p class="eyebrow">KPI graficable</p><h3>Torta engagement rate</h3></div>
+            <span>Meta 4%</span>
           </div>
           <canvas id="engagementPieChart"></canvas>
         </div>
 
         <div class="chart-stage side-pie side-pie-ctr">
           <div class="card-heading compact">
-            <div><p class="eyebrow">KPI graficable</p><h3>Torta de conversión a clics</h3></div>
-            <span>Clics vs meta 0,20%</span>
+            <div><p class="eyebrow">KPI graficable</p><h3>Torta CTR institucional</h3></div>
+            <span>Meta 0,20%</span>
           </div>
           <canvas id="ctrPieChart"></canvas>
         </div>
@@ -201,13 +201,11 @@
 
       <section id="alertas" class="insight-grid">
         <article class="insight-panel">
-          <div class="card-heading compact"><div><p class="eyebrow">Semáforo gerencial</p><h3>Alertas críticas editables</h3></div></div>
-          <div class="edit-toolbar"><button id="btnAddAlert" class="mini-action">+ Agregar alerta</button><button id="btnRecalcAlerts" class="mini-action secondary">Recalcular automáticas</button></div>
+          <div class="card-heading compact"><div><p class="eyebrow">Semáforo gerencial</p><h3>Alertas críticas automáticas</h3></div></div>
           <div id="alertsList" class="alert-list"></div>
         </article>
         <article class="insight-panel">
-          <div class="card-heading compact"><div><p class="eyebrow">Ruta de mejora</p><h3>Recomendaciones priorizadas editables</h3></div></div>
-          <div class="edit-toolbar"><button id="btnAddRecommendation" class="mini-action">+ Agregar recomendación</button></div>
+          <div class="card-heading compact"><div><p class="eyebrow">Ruta de mejora</p><h3>Recomendaciones priorizadas</h3></div></div>
           <ol id="recommendationsList" class="recommendation-list"></ol>
         </article>
       </section>

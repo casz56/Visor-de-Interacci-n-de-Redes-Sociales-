@@ -37,8 +37,7 @@ const initialState = {
     "Crear tablero de aprendizaje: pieza ganadora, hipótesis, resultado, réplica y mejora para la siguiente semana.",
     "Activar pauta mínima solo sobre publicaciones orgánicas ganadoras, focalizada en municipios del Huila.",
     "Definir metas trimestrales frente a Infibagué e Inficaldas, separando crecimiento de comunidad, engagement y conversión."
-  ],
-  manualAlerts: null
+  ]
 };
 
 let state = JSON.parse(localStorage.getItem('infihuilaMediaDashboardFinal')) || structuredClone(initialState);
@@ -359,41 +358,22 @@ function renderCharts(){
   const totalClicks = sum(items,'clicks');
   const engagement = totalViews ? totalInteractions / totalViews * 100 : 0;
   const ctr = totalViews ? totalClicks / totalViews * 100 : 0;
-  const targetEngagementInteractions = totalViews * 0.04;
-  const engagementGap = Math.max(0, targetEngagementInteractions - totalInteractions);
-  const targetClicks = totalViews * 0.002;
-  const clicksGap = Math.max(0, targetClicks - totalClicks);
-
   const engagementCanvas = $('engagementPieChart');
   if(engagementCanvas){
+    const pctTarget = clamp((engagement / 4) * 100, 0, 100);
     charts.engagementPie = new Chart(engagementCanvas, {
       type:'doughnut',
-      data:{
-        labels:['Interacciones logradas', 'Brecha frente a meta 4%'],
-        datasets:[{
-          data:[totalInteractions, engagementGap || Math.max(1, targetEngagementInteractions * .02)],
-          borderWidth:0,
-          cutout:'68%',
-          backgroundColor:[COLORS.green, 'rgba(0,108,114,.12)']
-        }]
-      },
-      options: kpiPieOptions(`Tasa de interacción ${percent(engagement)}`, `Meta: 4% · ${formatNumber(totalInteractions)} interacciones`)
+      data:{ labels:['Cumplimiento de meta','Brecha por cerrar'], datasets:[{ data:[pctTarget, Math.max(0, 100-pctTarget)], borderWidth:0, cutout:'68%', backgroundColor:[COLORS.green, 'rgba(0,108,114,.10)'] }]},
+      options: kpiPieOptions(`Engagement ${percent(engagement)}`, `Meta 4%`)
     });
   }
   const ctrCanvas = $('ctrPieChart');
   if(ctrCanvas){
+    const pctTarget = clamp((ctr / .20) * 100, 0, 100);
     charts.ctrPie = new Chart(ctrCanvas, {
       type:'doughnut',
-      data:{
-        labels:['Clics generados', 'Clics faltantes para meta 0,20%'],
-        datasets:[{
-          data:[totalClicks, clicksGap || Math.max(1, targetClicks * .02)],
-          borderWidth:0,
-          cutout:'68%',
-          backgroundColor:[COLORS.blue, 'rgba(245,158,11,.18)']
-        }]
-      },
-      options: kpiPieOptions(`CTR institucional ${percent(ctr)}`, `Meta: 0,20% · ${formatNumber(totalClicks)} clics`)
+      data:{ labels:['Cumplimiento de meta','Brecha por cerrar'], datasets:[{ data:[pctTarget, Math.max(0, 100-pctTarget)], borderWidth:0, cutout:'68%', backgroundColor:[COLORS.blue, 'rgba(0,108,114,.10)'] }]},
+      options: kpiPieOptions(`CTR ${percent(ctr)}`, `Meta 0,20%`)
     });
   }
 }
@@ -435,7 +415,7 @@ function kpiPieOptions(title, subtitle){
     plugins:{
       legend:{ position:'bottom', labels:{ usePointStyle:true, padding:14, font:{ weight:'bold' }}},
       title:{ display:true, text:[title, subtitle], color:COLORS.blueDark, font:{ weight:'bold', size:14 }, padding:{ top:2, bottom:8 }},
-      tooltip:{ callbacks:{ label:(ctx)=>`${ctx.label}: ${formatNumber(ctx.raw)}` }}
+      tooltip:{ callbacks:{ label:(ctx)=>`${ctx.label}: ${percent(ctx.raw)}` }}
     },
     animation:{ duration:900 }
   };
@@ -457,55 +437,17 @@ function buildAlerts(items){
   return alerts;
 }
 
-function editableAlerts(){
-  if(!Array.isArray(state.manualAlerts)) {
-    state.manualAlerts = buildAlerts(byFilter(state.platforms));
-    saveState();
-  }
-  return state.manualAlerts;
-}
-
 function renderAlerts(){
   const list = $('alertsList');
-  const alerts = editableAlerts();
-  list.innerHTML = alerts.map((a, i) => `
-    <div class="alert-item ${a.type || 'warning'} editable-card" data-alert-index="${i}">
+  list.innerHTML = buildAlerts(byFilter(state.platforms)).map(a => `
+    <div class="alert-item ${a.type}">
       <span class="alert-dot"></span>
-      <div class="editable-body">
-        <strong contenteditable="true" data-alert-field="title">${a.title || 'Nueva alerta'}</strong>
-        <p contenteditable="true" data-alert-field="body">${a.body || 'Describe la alerta gerencial.'}</p>
-        <select data-alert-field="type" aria-label="Nivel de alerta">
-          <option value="critical" ${(a.type||'')==='critical'?'selected':''}>Crítica</option>
-          <option value="warning" ${(a.type||'')==='warning'?'selected':''}>Preventiva</option>
-          <option value="ok" ${(a.type||'')==='ok'?'selected':''}>Controlada</option>
-        </select>
-      </div>
-      <button class="icon-btn danger" data-delete-alert="${i}" title="Eliminar alerta">×</button>
+      <div><strong>${a.title}</strong><p>${a.body}</p></div>
     </div>`).join('');
 }
 function renderRecommendations(){
-  const list = $('recommendationsList');
-  list.innerHTML = state.recommendations.map((x, i) => `
-    <li class="editable-recommendation" data-rec-index="${i}">
-      <span contenteditable="true" data-rec-field="text">${x}</span>
-      <button class="icon-btn danger" data-delete-rec="${i}" title="Eliminar recomendación">×</button>
-    </li>`).join('');
+  $('recommendationsList').innerHTML = state.recommendations.map(x => `<li>${x}</li>`).join('');
 }
-
-function addManualAlert(){
-  if(!Array.isArray(state.manualAlerts)) state.manualAlerts = buildAlerts(byFilter(state.platforms));
-  state.manualAlerts.push({ type:'warning', title:'Nueva alerta gerencial', body:'Escribe aquí la alerta o hallazgo de seguimiento.' });
-  saveState(); renderAlerts();
-}
-function addRecommendation(){
-  state.recommendations.push('Nueva acción de mejora priorizada.');
-  saveState(); renderRecommendations();
-}
-function recalculateAlerts(){
-  state.manualAlerts = buildAlerts(byFilter(state.platforms));
-  saveState(); renderAlerts();
-}
-
 
 function renderTable(){
   const tbody = $('dataTable').querySelector('tbody');
@@ -637,32 +579,6 @@ function initEvents(){
   ['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('drag'); }));
   ['dragleave','drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('drag'); }));
   dz.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if(f) handleFile(f); });
-  $('btnAddAlert')?.addEventListener('click', addManualAlert);
-  $('btnRecalcAlerts')?.addEventListener('click', recalculateAlerts);
-  $('btnAddRecommendation')?.addEventListener('click', addRecommendation);
-  $('alertsList')?.addEventListener('input', e => {
-    const card = e.target.closest('[data-alert-index]'); if(!card) return;
-    const i = Number(card.dataset.alertIndex); const field = e.target.dataset.alertField; if(!field) return;
-    if(!Array.isArray(state.manualAlerts)) state.manualAlerts = buildAlerts(byFilter(state.platforms));
-    state.manualAlerts[i][field] = e.target.textContent.trim(); saveState();
-  });
-  $('alertsList')?.addEventListener('change', e => {
-    const card = e.target.closest('[data-alert-index]'); if(!card) return;
-    const i = Number(card.dataset.alertIndex); const field = e.target.dataset.alertField; if(field !== 'type') return;
-    state.manualAlerts[i].type = e.target.value; saveState(); renderAlerts();
-  });
-  $('alertsList')?.addEventListener('click', e => {
-    const btn = e.target.closest('[data-delete-alert]'); if(!btn) return;
-    const i = Number(btn.dataset.deleteAlert); state.manualAlerts.splice(i, 1); saveState(); renderAlerts();
-  });
-  $('recommendationsList')?.addEventListener('input', e => {
-    const li = e.target.closest('[data-rec-index]'); if(!li || !e.target.dataset.recField) return;
-    state.recommendations[Number(li.dataset.recIndex)] = e.target.textContent.trim(); saveState();
-  });
-  $('recommendationsList')?.addEventListener('click', e => {
-    const btn = e.target.closest('[data-delete-rec]'); if(!btn) return;
-    state.recommendations.splice(Number(btn.dataset.deleteRec), 1); saveState(); renderRecommendations();
-  });
   document.querySelectorAll('.nav-pill').forEach(a => a.addEventListener('click', () => {
     document.querySelectorAll('.nav-pill').forEach(x => x.classList.remove('active'));
     a.classList.add('active');
