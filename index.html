@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#006C72" />
+  <title>INFIHUILA | Comando Plan de Medios</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <div class="app-frame">
+    <aside class="sidebar" aria-label="Panel institucional">
+      <div class="brand-glass">
+        <img src="assets/logo-infihuila.png" alt="Logo INFIHUILA" />
+        <span>Comunicaciones</span>
+        <strong>Plan de medios</strong>
+      </div>
+
+      <nav class="nav-rail" aria-label="Navegación principal">
+        <a class="nav-pill active" href="#comando"><span>01</span>Comando</a>
+        <a class="nav-pill" href="#kpis"><span>02</span>KPI</a>
+        <a class="nav-pill" href="#graficas"><span>03</span>Gráficos</a>
+        <a class="nav-pill" href="#alertas"><span>04</span>Alertas</a>
+        <a class="nav-pill" href="#datos"><span>05</span>Datos</a>
+      </nav>
+
+      <div class="side-orbit">
+        <div class="orbit-ring"><span id="sideScore">50</span></div>
+        <p>Índice gerencial</p>
+        <small>Actualización dinámica con cada carga mensual.</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title-block">
+          <p class="eyebrow">INFIHUILA · Social Media Intelligence</p>
+          <h1>Comando gerencial del plan de medios</h1>
+          <p>Dashboard interactivo para medir crecimiento, formatos ganadores, conversión, respuesta ciudadana y brechas frente a referentes institucionales.</p>
+        </div>
+        <div class="action-panel">
+          <button id="btnReset" class="btn btn-light">Restaurar base</button>
+          <button id="btnExport" class="btn btn-solid">Exportar CSV</button>
+        </div>
+      </header>
+
+      <section id="comando" class="command-grid">
+        <article class="command-card hero-command">
+          <div class="hero-copy">
+            <p class="eyebrow">Período analizado</p>
+            <h2 id="periodoLabel">Febrero 2026 · Marzo 2026</h2>
+            <p id="executiveSummary"></p>
+          </div>
+          <div class="hero-metrics">
+            <div><span>Plataformas</span><strong id="platformCount">2</strong></div>
+            <div><span>Clics</span><strong id="totalClicks">5</strong></div>
+            <div><span>Alertas</span><strong id="totalAlerts">3</strong></div>
+          </div>
+          <div class="pulse-strip">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </article>
+
+        <article class="command-card score-command">
+          <p class="eyebrow">Performance score</p>
+          <div class="score-wrap">
+            <canvas id="scoreGauge" aria-label="Índice de desempeño"></canvas>
+            <div class="score-number"><strong id="scoreNumber">50</strong><span>/100</span></div>
+          </div>
+          <p id="scoreLabel" class="score-label">En mejora: potencial alto</p>
+          <div class="score-scale"><span>Crítico</span><span>Óptimo</span></div>
+        </article>
+
+        <article class="command-card upload-command" id="carga">
+          <p class="eyebrow">Actualización inteligente</p>
+          <h3>Cargar PDF, Excel o CSV</h3>
+          <p>El profesional de comunicaciones puede subir el informe mensual y el tablero recalcula los KPI, gráficos y alertas.</p>
+          <div id="dropzone" class="dropzone">
+            <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls,.csv" hidden />
+            <button id="btnUpload" class="btn btn-solid">Seleccionar archivo</button>
+            <span id="uploadStatus">También puedes arrastrar el archivo aquí.</span>
+          </div>
+        </article>
+      </section>
+
+      <section id="kpis" class="section-head">
+        <div>
+          <p class="eyebrow">Indicadores estratégicos</p>
+          <h2>KPI vivos del desempeño digital</h2>
+        </div>
+        <div class="filters">
+          <select id="platformFilter" aria-label="Filtrar por plataforma"></select>
+          <select id="periodFilter" aria-label="Filtrar por período"></select>
+        </div>
+      </section>
+      <section class="kpi-grid" id="kpiGrid"></section>
+
+      <section id="graficas" class="chart-theater">
+        <div class="chart-stage stage-main">
+          <div class="card-heading">
+            <div><p class="eyebrow">Gráfico principal</p><h3>Radar de desempeño por plataforma</h3></div>
+            <span>Visualizaciones · Interacciones · Clics · Frecuencia · Respuesta</span>
+          </div>
+          <canvas id="radarChart"></canvas>
+        </div>
+
+        <div class="chart-stage stage-wide">
+          <div class="card-heading">
+            <div><p class="eyebrow">Tendencia ejecutiva</p><h3>Evolución y tracción del plan de medios</h3></div>
+            <span>Barras + líneas dinámicas</span>
+          </div>
+          <canvas id="trendChart"></canvas>
+        </div>
+
+        <div class="chart-stage">
+          <div class="card-heading compact">
+            <div><p class="eyebrow">Conversión</p><h3>Clics sobre visualizaciones</h3></div>
+          </div>
+          <canvas id="conversionChart"></canvas>
+        </div>
+
+        <div class="chart-stage" id="formatos">
+          <div class="card-heading compact">
+            <div><p class="eyebrow">Formatos ganadores</p><h3>Ranking de piezas</h3></div>
+          </div>
+          <canvas id="formatChart"></canvas>
+        </div>
+
+        <div class="chart-stage stage-wide">
+          <div class="card-heading">
+            <div><p class="eyebrow">Benchmark institucional</p><h3>Brecha frente a referentes</h3></div>
+            <span>Seguidores y volumen editorial</span>
+          </div>
+          <canvas id="benchmarkChart"></canvas>
+        </div>
+      </section>
+
+      <section id="alertas" class="insight-grid">
+        <article class="insight-panel">
+          <div class="card-heading compact"><div><p class="eyebrow">Semáforo gerencial</p><h3>Alertas críticas automáticas</h3></div></div>
+          <div id="alertsList" class="alert-list"></div>
+        </article>
+        <article class="insight-panel">
+          <div class="card-heading compact"><div><p class="eyebrow">Ruta de mejora</p><h3>Recomendaciones priorizadas</h3></div></div>
+          <ol id="recommendationsList" class="recommendation-list"></ol>
+        </article>
+      </section>
+
+      <section id="datos" class="data-panel">
+        <div class="section-head inside">
+          <div><p class="eyebrow">Base editable</p><h2>Datos consolidados</h2></div>
+          <button id="btnAddRow" class="btn btn-light">Agregar registro</button>
+        </div>
+        <div class="table-scroll">
+          <table id="dataTable">
+            <thead>
+              <tr>
+                <th>Plataforma</th><th>Período</th><th>Visualizaciones</th><th>Alcance</th><th>Interacciones</th><th>Visitas</th><th>Seguidores nuevos</th><th>Clics</th><th>Respuesta %</th><th>Publicaciones</th><th>Acción</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="kpiTemplate">
+    <article class="kpi-card">
+      <div class="kpi-top"><span class="kpi-icon"></span><span class="kpi-badge"></span></div>
+      <span class="metric-label"></span>
+      <strong></strong>
+      <small></small>
+      <div class="kpi-meter"><span></span></div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
